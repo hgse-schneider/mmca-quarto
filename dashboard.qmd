@@ -144,74 +144,11 @@ plt.legend(["Laboratory vs Ecological studies"])
 
 # Visualizations
 
-## Row
-
-```{python}
-# import numpy as np
-# import panel as pn
-# import plotly.graph_objs as go
-
-# pn.extension("plotly")
-# pn.config.sizing_mode = "stretch_width"
-
-# def create_plot():
-#     t = np.linspace(0, 10, 50)
-#     x, y, z = np.cos(t), np.sin(t), t
-#     fig = go.Figure(
-#         data=go.Scatter3d(x=x, y=y, z=z, mode="markers"), layout=dict(title="3D Scatter Plot")
-#     )
-#     fig.layout.autosize = True
-#     return fig
-
-# plot = create_plot()
-# plot_panel = pn.pane.Plotly(plot, config={"responsive": True}, sizing_mode="stretch_both")
-
-# @pn.depends(plot_panel.param.click_data, watch=True)
-# def print_hello_world(click_data):
-#     print("hello world", click_data)
-
-# @pn.depends(plot_panel.param.click_data)
-# def string_hello_world(click_data):
-#     return click_data
-import plotly.graph_objects as go
-
-import numpy as np
-np.random.seed(1)
-
-x = np.random.rand(100)
-y = np.random.rand(100)
-
-f = go.FigureWidget([go.Scatter(x=x, y=y, mode='markers')])
-
-scatter = f.data[0]
-colors = ['#a3a7e4'] * 100
-scatter.marker.color = colors
-scatter.marker.size = [10] * 100
-f.layout.hovermode = 'closest'
-
-
-# create our callback function
-def update_point(trace, points, selector):
-    c = list(scatter.marker.color)
-    s = list(scatter.marker.size)
-    for i in points.point_inds:
-        c[i] = '#bae2be'
-        s[i] = 20
-        with f.batch_update():
-            scatter.marker.color = c
-            scatter.marker.size = s
-
-
-scatter.on_click(update_point)
-
-f
-```
 
 ## Row
 
 ```{python}
 #| title: "Number of papers"
-# collect all the connections in a dictionary
 # collect all the connections in a dictionary
 connections = collections.defaultdict(lambda: collections.defaultdict(lambda: 0))
 for index, row in df.iterrows():
@@ -268,8 +205,8 @@ fig = go.Figure(data=[go.Sankey(
             "target": target, 
             "value": count}
     )])
-plt.title = fig.data[0].on_click(functools.partial(click_detector, node_list=label_list))
-#plot_output_print.clear_output()
+
+
 fig.show()
 ```
 
