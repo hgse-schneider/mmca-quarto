@@ -1,0 +1,289 @@
+---
+title: "Multimodal Collaboration Analytics "
+format: dashboard
+logo: images/logo.png
+theme: custom.scss
+---
+
+```{python}
+#| tags: [parameters]
+
+# to render w/ a different product type:
+# quarto render dashboard.qmd -P product_type:Premium
+
+product_type = "Standard"
+
+def click_detector(trace, points, state, node_list):
+  # Compute new color array
+  plot_output_print.clear_output()
+  with plot_output_print:
+    click_in = points.point_inds[-1]
+  if(click_in < len(node_list)):
+    return "Node clicked", + lick_in + node_list[click_in]
+  else:
+    return "Edge clicked" + click_in
+```
+
+```{python}
+import re 
+import functools
+import pandas as pd
+from helpers import *
+from matplotlib import rcParams
+from itables import show
+import matplotlib.pyplot as plt
+import seaborn as sns
+import collections
+import numpy as np
+
+sns.set_theme()
+sns.set(font_scale=2.0)
+
+rcParams.update({"savefig.bbox": "tight"})
+
+churn = pd.read_csv("data/churn.csv")
+churn_reason = pd.read_csv("data/churn_reason.csv")
+purchase_characteristics = pd.read_csv("data/purchase_characteristics.csv")
+
+url = 'https://docs.google.com/spreadsheets/d/1K1KX0t5NGJ7-1RygOwuPmpCAaYOadVIwqDB_OhO_9H4/edit?usp=sharing'
+
+# df = pd.read_html(url, flavor='bs4', encoding='utf8')
+# df = df[0]
+# df.columns = df.iloc[0]
+# df = df[2:]
+# df = df.drop(df.iloc[:, 0:1], inplace=False, axis=1)
+# df = df.set_index('id')
+df = pd.read_csv('data.csv')
+count = df.shape[0]
+citations = df.citations_2023.astype(int).sum()
+
+count_rel = 0
+for index, row in df.iterrows():
+    res = row['analysis_and_results']
+    count_rel += len(res.split('\n'))
+```
+
+# Overview
+
+## Row
+
+```{python}
+#| content: valuebox
+#| title: "Number of papers"
+dict(
+  icon = "archive",
+  color = "light",
+  value = count
+)
+```
+
+```{python}
+#| content: valuebox
+#| title: "Total citations"
+dict(
+  icon = "graph-down",
+  color = "light",
+  value = citations
+)
+```
+
+```{python}
+#| content: valuebox
+#| title: "Number of relationships between multimodal features and collaborative measures"
+dict(
+  icon = "bullseye",
+  color = "light",
+  value = count_rel
+)
+```
+
+## Row {height="50%"}
+
+```{python}
+#| title: Cumulative number of papers per year
+dic = dict(df.year.value_counts().sort_index())
+prev = 0
+for k,v in dic.items():
+    dic[k] += prev
+    prev = dic[k]
+pd.DataFrame.from_dict(dic, orient='index').plot()
+plt.legend(["Cumulative Number of Papers"])
+_ = plt.xticks([x for x in range(2000,2024,10)])
+plt.show()
+```
+
+
+```{python}
+#| title: Cumulative citations of papers per year
+dic = dict(sorted(dic.items()))
+prev = 0
+for k,v in dic.items():
+    dic[k] += int(prev)
+    prev = dic[k]
+pd.DataFrame.from_dict(dic, orient='index').plot()
+plt.legend(["Cumulative Number of Citations"])
+_ = plt.xticks([x for x in range(2000,2024,10)])
+plt.show()
+```
+
+## Row
+
+
+```{python}
+#| title: sample sizes
+sample_sizes = [int(x.replace('G=','')) for x in df.N_groups.astype(str) if 'G=' in x]
+_ = plt.hist(sample_sizes)
+plt.legend(["Sample sizes"])
+```
+
+```{python}
+#| title: lab / ecological settings
+df.study_setting.value_counts().plot(kind='bar')
+plt.legend(["Laboratory vs Ecological studies"])
+```
+
+# Visualizations
+
+## Row
+
+```{python}
+# import numpy as np
+# import panel as pn
+# import plotly.graph_objs as go
+
+# pn.extension("plotly")
+# pn.config.sizing_mode = "stretch_width"
+
+# def create_plot():
+#     t = np.linspace(0, 10, 50)
+#     x, y, z = np.cos(t), np.sin(t), t
+#     fig = go.Figure(
+#         data=go.Scatter3d(x=x, y=y, z=z, mode="markers"), layout=dict(title="3D Scatter Plot")
+#     )
+#     fig.layout.autosize = True
+#     return fig
+
+# plot = create_plot()
+# plot_panel = pn.pane.Plotly(plot, config={"responsive": True}, sizing_mode="stretch_both")
+
+# @pn.depends(plot_panel.param.click_data, watch=True)
+# def print_hello_world(click_data):
+#     print("hello world", click_data)
+
+# @pn.depends(plot_panel.param.click_data)
+# def string_hello_world(click_data):
+#     return click_data
+import plotly.graph_objects as go
+
+import numpy as np
+np.random.seed(1)
+
+x = np.random.rand(100)
+y = np.random.rand(100)
+
+f = go.FigureWidget([go.Scatter(x=x, y=y, mode='markers')])
+
+scatter = f.data[0]
+colors = ['#a3a7e4'] * 100
+scatter.marker.color = colors
+scatter.marker.size = [10] * 100
+f.layout.hovermode = 'closest'
+
+
+# create our callback function
+def update_point(trace, points, selector):
+    c = list(scatter.marker.color)
+    s = list(scatter.marker.size)
+    for i in points.point_inds:
+        c[i] = '#bae2be'
+        s[i] = 20
+        with f.batch_update():
+            scatter.marker.color = c
+            scatter.marker.size = s
+
+
+scatter.on_click(update_point)
+
+f
+```
+
+## Row
+
+```{python}
+#| title: "Number of papers"
+# collect all the connections in a dictionary
+# collect all the connections in a dictionary
+connections = collections.defaultdict(lambda: collections.defaultdict(lambda: 0))
+for index, row in df.iterrows():
+    jva_small = row['jva_smaller_category']
+    metric_small = extract_codes(row['metric_smaller_category'])
+    metric = extract_codes(row['metric_larger_category'])
+    outcomes = extract_codes(row['outcome_smaller_category'])
+    outcomes_larger = extract_codes(row['outcome_larger_category'])
+    sig = extract_sig(row['analysis_and_results'])
+    # print(metric)
+    # print(outcomes)
+    # print(sig)
+
+    # # metrics
+    # for i,m in metric_small.items():
+    #     connections[m][metric[i]] += 1
+    #connections[jva_small]['Gaze'] += 1
+        
+    # outcomes
+    for i,o in outcomes.items():
+        if i.lower() in outcomes_larger.keys():
+            connections[o][outcomes_larger[i.lower()]] += 1
+
+    # sig relationship
+    for relationship,result in sig.items():
+        if result == 'non': continue
+        src,dst = relationship.split('-')
+        src = [ch.lower() for ch in str(src) if ch.isalnum()]
+        dst = [ch.lower() for ch in str(dst) if ch.isalnum()]
+        for x in src:
+            for y in dst:
+                connections[metric[x.lower()]][outcomes[y.lower()]] += 1
+
+import pandas as pd
+import plotly.graph_objects as go
+
+label_list = []
+source = []
+target = []
+count = []
+
+for src,dic in connections.items():
+    for dst,val in dic.items():
+        if True:#src == 'Gaze' or dst == 'Gaze': 
+            if src not in label_list: label_list.append(src)
+            if dst not in label_list: label_list.append(dst)
+            source.append(label_list.index(src))
+            target.append(label_list.index(dst))
+            count.append(val)
+
+fig = go.Figure(data=[go.Sankey(
+    node = {"label": label_list},
+    link = {"source": source, 
+            "target": target, 
+            "value": count}
+    )])
+plt.title = fig.data[0].on_click(functools.partial(click_detector, node_list=label_list))
+#plot_output_print.clear_output()
+fig.show()
+```
+
+
+
+# Data 
+
+```{python}
+#| title: Records
+df['title+url'] = '<a target="_blank" rel="noopener noreferrer" href="https://scholar.google.com/scholar?hl=en&q=' + df.title.str.replace(' ', '%20') + '">' + df.title + "</a>"
+show(df['title+url'])
+```
+
+```{python}
+#| title: Top ten most cited papers
+show(df[['citations_2023','year','title']].sort_values('citations_2023', ascending=False)[:10])
+```
